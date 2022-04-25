@@ -35,16 +35,19 @@ int block = 2;
 // array used to read blocks
 byte readbackblock[18];
 
+// define default sentence array
+String sentence[5] = {"C3 DF 17 13", "B0 16 10 22", "97 05 B3 1F", "95 D8 B0 1F", "2C EB B2 1F"};
+
+
+// MQTT server setup
 const char* ssid = "SpectrumSetup-50";
 const char* password = "brightrabbit840";
-
 const char* mqtt_server = "broker.hivemq.com";
 
 WiFiClient espClient;
 PubSubClient client(espClient);
 long lastMsg = 0;
 char msg[50];
-int value = 0;
 
 void setup_wifi() {
   delay(10);
@@ -75,12 +78,37 @@ void callback(char* topic, byte* message, unsigned int length) {
   for (int i = 0; i < length; i++) {
     Serial.print((char)message[i]);
     messageTemp += (char)message[i];
+    switch((char)message[i]) {
+      case 'a' :
+        Serial.println("Letter a received.");
+        sentence[i] = "C3 DF 17 13";
+        break;
+      case 'b' :
+        Serial.println("Letter b received.");
+        sentence[i] = "B0 16 10 22";
+        break;
+      case 'c' :
+        Serial.println("Letter c received.");
+        sentence[i] = "97 05 B3 1F";
+        break;
+      case 'd' :
+        Serial.println("Letter d received.");
+        sentence[i] = "95 D8 B0 1F";
+        break;
+      case 'e' :
+        Serial.println("Letter e received.");
+        sentence[i] = "2C EB B2 1F";
+        break;
+      default :
+        Serial.println("invalid input, defaulting to a");
+        sentence[i] = "C3 DF 17 13";
+        break;
+   }
   }
   Serial.println();
 }
 
-void setup()
-{
+void setup() {
   // initialize RGB pins as outputs
   pinMode(3, OUTPUT);
   pinMode(4, OUTPUT);
@@ -93,6 +121,8 @@ void setup()
   Serial.println();
   Serial.println("scanning for track");
   Serial.println();
+
+  // setup wifi and mqtt
   setup_wifi();
   client.setServer(mqtt_server, 1883);
   client.setCallback(callback);
@@ -112,11 +142,7 @@ void setup()
   client.subscribe("ITP388/test");
 }
 
-void loop() 
-{
-  // define sentence array
-  String sentence[5] = {"C3 DF 17 13","B0 16 10 22","97 05 B3 1F","95 D8 B0 1F","2C EB B2 1F"};
-
+void loop() {
   // set LED to default light 
   analogWrite(pin_red,230);
   analogWrite(pin_blue,250);
@@ -139,7 +165,6 @@ void loop()
   Serial.println();
   Serial.print("Scanned track :");
   String content= "";
-  byte letter;
   for (byte i = 0; i < mfrc522.uid.size; i++) 
   {
     Serial.print(mfrc522.uid.uidByte[i] < 0x10 ? " 0" : " ");
@@ -155,11 +180,11 @@ void loop()
 
   // print results
   Serial.println();
-  Serial.print("Message : ");
+  Serial.print("Message: ");
   content.toUpperCase();
 
-  if (content.substring(1) == sentence[count]) //checking if track is correct
-  {
+  //checking if track is correct
+  if (content.substring(1) == sentence[count]) {
     Serial.println("correct track");
     Serial.println();
 
@@ -169,14 +194,11 @@ void loop()
     analogWrite(pin_green,255);
     delay(3000);
 
-    count = count + 1;
+    count++;
     Serial.println(count);
     Serial.println(sizeof(sentence));
-  }
-
-  else   {
+  } else {
     Serial.println("incorrect track");
-
     // make LED red
     analogWrite(pin_red,255);
     analogWrite(pin_blue,0);
@@ -188,11 +210,9 @@ void loop()
   Serial.println();
 
   // when sentence is complete
-  if (count*6 == sizeof(sentence))
-  {
+  if (count == sizeof(sentence)/sizeof(sentence[0])) { 
     int timer = 0;
-    while (timer < 5)
-    {
+    while (timer < 5) {
       analogWrite(pin_red,0);
       analogWrite(pin_blue,0);
       analogWrite(pin_green,255);
@@ -204,9 +224,8 @@ void loop()
       delay(500);
 
       timer++;
-
-      count = 0;
     }
+    count = 0;
   }
   client.loop();
 } 
